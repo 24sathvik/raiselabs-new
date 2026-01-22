@@ -12,6 +12,9 @@ import { useState, useRef } from "react"
 import emailjs from "@emailjs/browser"
 import { toast } from "sonner"
 
+const CLOUD_NAME = "dqygyq1pl"
+const UPLOAD_PRESET = "raiselabs_service_upload"
+
 export default function ServicePage() {
   const [selectedFiles, setSelectedFiles] = useState<File[]>([])
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -19,13 +22,36 @@ export default function ServicePage() {
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
-      const filesArray = Array.from(e.target.files)
-      setSelectedFiles(prev => [...prev, ...filesArray])
+      setSelectedFiles(Array.from(e.target.files))
     }
   }
 
   const removeFile = (index: number) => {
     setSelectedFiles(prev => prev.filter((_, i) => i !== index))
+  }
+
+  // 🔹 Upload files to Cloudinary and return URLs
+  const uploadToCloudinary = async (): Promise<string[]> => {
+    const urls: string[] = []
+
+    for (const file of selectedFiles) {
+      const formData = new FormData()
+      formData.append("file", file)
+      formData.append("upload_preset", UPLOAD_PRESET)
+
+      const response = await fetch(
+        `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/auto/upload`,
+        {
+          method: "POST",
+          body: formData
+        }
+      )
+
+      const data = await response.json()
+      urls.push(data.secure_url)
+    }
+
+    return urls
   }
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -34,13 +60,22 @@ export default function ServicePage() {
 
     if (!formRef.current) return
 
-    // Convert selected files to readable names (EmailJS safe)
-    const attachmentsValue =
-      selectedFiles.length > 0
-        ? selectedFiles.map(file => file.name).join(", ")
-        : "No attachments provided"
-
     try {
+      let attachmentLinks = "No attachments provided"
+
+      // Upload files if any
+      if (selectedFiles.length > 0) {
+        const urls = await uploadToCloudinary()
+        attachmentLinks = urls.join("\n")
+      }
+
+      // Inject URLs into hidden field for EmailJS
+      const hiddenInput = formRef.current.querySelector(
+        'input[name="attachments"]'
+      ) as HTMLInputElement
+
+      hiddenInput.value = attachmentLinks
+
       await emailjs.sendForm(
         "service_aq575d6",
         "template_2430i4s",
@@ -55,7 +90,7 @@ export default function ServicePage() {
       formRef.current.reset()
       setSelectedFiles([])
     } catch (error) {
-      console.error("EmailJS Error:", error)
+      console.error("EmailJS / Cloudinary Error:", error)
       toast.error("Failed to submit service request. Please try again.")
     } finally {
       setIsSubmitting(false)
@@ -90,86 +125,45 @@ export default function ServicePage() {
         <section className="py-12 lg:py-20 bg-muted/30">
           <div className="container mx-auto px-4 lg:px-8">
             <div className="max-w-3xl mx-auto">
-              <motion.div
-                initial={{ opacity: 0, y: 40 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.6 }}
-                className="bg-card p-8 lg:p-12 rounded-2xl border border-[#7F9DB1]/20 shadow-xl"
-              >
+              <motion.div className="bg-card p-8 lg:p-12 rounded-2xl border border-[#7F9DB1]/20 shadow-xl">
                 <form
                   ref={formRef}
                   onSubmit={handleSubmit}
                   className="space-y-6"
                 >
-                  {/* Full Name */}
                   <div className="space-y-2">
-                    <Label className="text-base">Full Name *</Label>
-                    <Input
-                      name="full_name"
-                      placeholder="John Doe"
-                      required
-                      className="border-[#7F9DB1]/30 focus:border-[#7F9DB1]"
-                    />
+                    <Label>Full Name *</Label>
+                    <Input name="full_name" required />
                   </div>
 
-                  {/* Email */}
                   <div className="space-y-2">
-                    <Label className="text-base">Email Address *</Label>
-                    <Input
-                      name="email"
-                      type="email"
-                      placeholder="john.doe@example.com"
-                      required
-                      className="border-[#7F9DB1]/30 focus:border-[#7F9DB1]"
-                    />
+                    <Label>Email Address *</Label>
+                    <Input type="email" name="email" required />
                   </div>
 
-                  {/* Product / Equipment */}
                   <div className="space-y-2">
-                    <Label className="text-base">
-                      Product ID / Equipment Name *
-                    </Label>
-                    <Input
-                      name="product_equipment"
-                      placeholder="e.g., RPHT-1P, Hardness Tester"
-                      required
-                      className="border-[#7F9DB1]/30 focus:border-[#7F9DB1]"
-                    />
+                    <Label>Product ID / Equipment Name *</Label>
+                    <Input name="product_equipment" required />
                   </div>
 
-                  {/* Issue Description */}
                   <div className="space-y-2">
-                    <Label className="text-base">
-                      Describe Your Query / Issue *
-                    </Label>
+                    <Label>Describe Your Query / Issue *</Label>
                     <Textarea
                       name="issue_description"
                       rows={8}
-                      placeholder="Please provide detailed information about your service request..."
                       required
-                      className="border-[#7F9DB1]/30 focus:border-[#7F9DB1] resize-none"
+                      className="resize-none"
                     />
                   </div>
 
-                  {/* Hidden Attachments Field */}
-                  <input
-                    type="hidden"
-                    name="attachments"
-                    value={
-                      selectedFiles.length > 0
-                        ? selectedFiles.map(file => file.name).join(", ")
-                        : "No attachments provided"
-                    }
-                  />
+                  {/* Hidden field for EmailJS */}
+                  <input type="hidden" name="attachments" />
 
-                  {/* File Upload UI (unchanged) */}
+                  {/* File Upload */}
                   <div className="space-y-2">
-                    <Label className="text-base">
-                      Upload Images or Videos (Optional)
-                    </Label>
+                    <Label>Upload Images or Videos (Optional)</Label>
 
-                    <div className="border-2 border-dashed border-[#7F9DB1]/30 rounded-xl p-6">
+                    <div className="border-2 border-dashed rounded-xl p-6">
                       <input
                         type="file"
                         multiple
@@ -179,8 +173,8 @@ export default function ServicePage() {
                         id="fileUpload"
                       />
                       <label htmlFor="fileUpload" className="cursor-pointer">
-                        <div className="flex flex-col items-center text-center">
-                          <Upload className="h-8 w-8 text-[#7F9DB1] mb-2" />
+                        <div className="flex flex-col items-center">
+                          <Upload className="h-8 w-8 mb-2 text-[#7F9DB1]" />
                           <p className="text-sm text-muted-foreground">
                             Click to upload files
                           </p>
@@ -188,31 +182,24 @@ export default function ServicePage() {
                       </label>
                     </div>
 
-                    {selectedFiles.length > 0 && (
-                      <div className="space-y-2">
-                        {selectedFiles.map((file, index) => (
-                          <div
-                            key={index}
-                            className="flex justify-between items-center p-2 bg-muted rounded-md"
-                          >
-                            <span className="text-sm truncate">
-                              {file.name}
-                            </span>
-                            <Button
-                              type="button"
-                              size="sm"
-                              variant="ghost"
-                              onClick={() => removeFile(index)}
-                            >
-                              <X className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        ))}
+                    {selectedFiles.map((file, index) => (
+                      <div
+                        key={index}
+                        className="flex justify-between items-center p-2 bg-muted rounded-md"
+                      >
+                        <span className="text-sm truncate">{file.name}</span>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => removeFile(index)}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
                       </div>
-                    )}
+                    ))}
                   </div>
 
-                  {/* Submit */}
                   <Button
                     type="submit"
                     size="lg"
