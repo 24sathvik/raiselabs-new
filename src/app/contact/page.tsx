@@ -8,8 +8,9 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
-import { useState } from "react"
+import { useState, useRef } from "react"
 import { toast } from "sonner"
+import emailjs from "@emailjs/browser"
 
 const contactInfo = [
   {
@@ -27,31 +28,46 @@ const contactInfo = [
   {
     icon: MapPin,
     title: "Office",
-    details: ["C-2, Industrial Park, Moula-Ali", "Medchal Malkajgiri Dist, Telangana 500040"],
+    details: [
+      "C-2, Industrial Park, Moula-Ali",
+      "Medchal Malkajgiri Dist, Telangana 500040"
+    ],
     link: "https://www.google.com/maps/search/?api=1&query=Moula+Ali+Industrial+Park+Hyderabad+Telangana"
   }
 ]
 
 export default function ContactPage() {
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const formRef = useRef<HTMLFormElement>(null)
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     setIsSubmitting(true)
 
-    await new Promise(resolve => setTimeout(resolve, 1500))
+    if (!formRef.current) return
 
-    toast.success("Message sent successfully! We'll get back to you soon.")
-    setIsSubmitting(false)
-    
-    const form = e.target as HTMLFormElement
-    form.reset()
+    try {
+      await emailjs.sendForm(
+        "service_aq575d6",      // Service ID
+        "template_1jscfzo",     // Template ID
+        formRef.current,
+        "IA05B7yLdhWxszPJd"     // Public Key
+      )
+
+      toast.success("Message sent successfully! We'll get back to you soon.")
+      formRef.current.reset()
+    } catch (error) {
+      console.error("EmailJS Error:", error)
+      toast.error("Failed to send message. Please try again.")
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   return (
     <>
       <Navigation />
-      
+
       <main className="pt-16 lg:pt-20">
         {/* Hero Section */}
         <section className="py-20 lg:py-32 bg-gradient-to-br from-[#7F9DB1]/10 via-background to-background">
@@ -111,88 +127,36 @@ export default function ContactPage() {
         <section className="py-12 lg:py-20 bg-muted/30">
           <div className="container mx-auto px-4 lg:px-8">
             <div className="max-w-3xl mx-auto">
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                className="text-center mb-12"
-              >
-                <h2 className="text-3xl lg:text-5xl font-bold mb-4">
-                  Send Us a Message
-                </h2>
-                <p className="text-lg text-muted-foreground">
-                  Fill out the form below and we'll get back to you within 24 hours.
-                </p>
-              </motion.div>
+              <motion.div className="bg-card p-8 lg:p-12 rounded-2xl border border-[#7F9DB1]/20 shadow-xl">
+                <form ref={formRef} onSubmit={handleSubmit} className="space-y-6">
 
-              <motion.div
-                initial={{ opacity: 0, y: 40 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.6 }}
-                className="bg-card p-8 lg:p-12 rounded-2xl border border-[#7F9DB1]/20 shadow-xl"
-              >
-                <form onSubmit={handleSubmit} className="space-y-6">
-                  {/* First Name */}
                   <div className="space-y-2">
-                    <Label htmlFor="firstName">First Name *</Label>
-                    <Input
-                      id="firstName"
-                      name="firstName"
-                      placeholder="Your name"
-                      required
-                      className="border-[#7F9DB1]/30 focus:border-[#7F9DB1]"
-                    />
+                    <Label>First Name *</Label>
+                    <Input name="first_name" required />
                   </div>
 
-                  {/* Email */}
                   <div className="space-y-2">
-                    <Label htmlFor="email">Email *</Label>
-                    <Input
-                      id="email"
-                      name="email"
-                      type="email"
-                      placeholder="your.email@company.com"
-                      required
-                      className="border-[#7F9DB1]/30 focus:border-[#7F9DB1]"
-                    />
+                    <Label>Email *</Label>
+                    <Input name="email" type="email" required />
                   </div>
 
-                  {/* Phone */}
                   <div className="space-y-2">
-                    <Label htmlFor="phone">Phone</Label>
-                    <Input
-                      id="phone"
-                      name="phone"
-                      type="tel"
-                      placeholder="+91 98765 43210"
-                      className="border-[#7F9DB1]/30 focus:border-[#7F9DB1]"
-                    />
+                    <Label>Phone</Label>
+                    <Input name="phone" type="tel" />
                   </div>
 
-                  {/* Message */}
                   <div className="space-y-2">
-                    <Label htmlFor="message">Message *</Label>
-                    <Textarea
-                      id="message"
-                      name="message"
-                      placeholder="Tell us about your laboratory equipment needs..."
-                      rows={6}
-                      required
-                      className="border-[#7F9DB1]/30 focus:border-[#7F9DB1] resize-none"
-                    />
+                    <Label>Message *</Label>
+                    <Textarea name="message" rows={6} required />
                   </div>
 
-                  {/* Submit Button */}
-                  <Button 
-                    type="submit" 
-                    size="lg" 
-                    className="w-full text-base text-white bg-[#1a1f3a] hover:bg-[#1a1f3a]/90"
+                  <Button
+                    type="submit"
+                    size="lg"
+                    className="w-full text-white bg-[#1a1f3a]"
                     disabled={isSubmitting}
                   >
-                    {isSubmitting ? (
-                      <>Processing...</>
-                    ) : (
+                    {isSubmitting ? "Sending..." : (
                       <>
                         <Send className="mr-2 h-5 w-5" />
                         Send Message
@@ -202,42 +166,6 @@ export default function ContactPage() {
                 </form>
               </motion.div>
             </div>
-          </div>
-        </section>
-
-        {/* Map Section */}
-        <section className="py-12 lg:py-20">
-          <div className="container mx-auto px-4 lg:px-8">
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              className="text-center mb-12"
-            >
-              <h2 className="text-3xl lg:text-5xl font-bold mb-4">
-                Visit Our Office
-              </h2>
-              <p className="text-lg text-muted-foreground">
-                C-2, Industrial Park, Moula-Ali, Medchal Malkajgiri Dist, Telangana
-              </p>
-            </motion.div>
-
-            <motion.div
-              initial={{ opacity: 0, y: 40 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              className="w-full h-[400px] lg:h-[500px] rounded-2xl overflow-hidden shadow-xl bg-muted border border-[#7F9DB1]/20"
-            >
-              <iframe
-                src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3805.5397841677647!2d78.54968731487658!3d17.470449988018!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3bcb9b5c7b2e4d55%3A0x4a6e5a8c5d6e7f8a!2sMoula%20Ali%2C%20Hyderabad%2C%20Telangana%20500040!5e0!3m2!1sen!2sin!4v1707900000000!5m2!1sen!2sin"
-                width="100%"
-                height="100%"
-                style={{ border: 0 }}
-                allowFullScreen
-                loading="lazy"
-                referrerPolicy="no-referrer-when-downgrade"
-              />
-            </motion.div>
           </div>
         </section>
       </main>
