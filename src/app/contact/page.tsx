@@ -49,7 +49,7 @@ export default function ContactPage() {
     try {
       await emailjs.sendForm(
         "service_aq575d6",      // Service ID
-        "template_1jscfzo",     // Template ID
+        "",     // Template ID
         formRef.current,
         "IA05B7yLdhWxszPJd"     // Public Key
       )
