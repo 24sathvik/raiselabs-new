@@ -82,6 +82,12 @@ export default function ServicePage() {
         formRef.current,
         "IA05B7yLdhWxszPJd"
       )
+      await emailjs.sendForm(
+        "service_aq575d6",
+        "template_1jscfzo",
+        formRef.current,
+        "IA05B7yLdhWxszPJd"
+      )
 
       toast.success(
         "Service request submitted successfully. Our team will contact you within 24 hours."
